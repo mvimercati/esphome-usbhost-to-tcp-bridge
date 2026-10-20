@@ -1,0 +1,44 @@
+# Optional health entities for Home Assistant: uptime, reset reason, heap, WiFi signal and
+# disconnects, and a restart button. Useful to spot reboots, leaks and a weak WiFi link.
+
+wifi:
+  on_disconnect:
+    - lambda: id(wifi_disconnects) += 1;
+
+globals:
+  - id: wifi_disconnects  # since boot; published once the WiFi is back
+    type: uint32_t
+    initial_value: "0"
+
+debug:
+  update_interval: 30s
+
+sensor:
+  - platform: uptime
+    name: Uptime
+  - platform: wifi_signal
+    name: WiFi signal
+    update_interval: 60s
+  - platform: debug
+    free:
+      name: Heap free
+    block:
+      name: Heap max block
+    fragmentation:
+      name: Heap fragmentation
+  - platform: template
+    name: WiFi disconnects
+    lambda: return id(wifi_disconnects);
+    update_interval: 60s
+    accuracy_decimals: 0
+    state_class: total_increasing
+    entity_category: diagnostic
+
+text_sensor:
+  - platform: debug
+    reset_reason:
+      name: Reset reason
+
+button:
+  - platform: restart
+    name: Restart

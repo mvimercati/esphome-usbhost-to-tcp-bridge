@@ -1,0 +1,64 @@
+# USB side of the bridge: the ESP is the USB host of a USB-serial adapter and drives its serial line.
+# The line settings are sent to the adapter's chip when it is plugged in. Pair it with one transport
+# package (tcp-server or tcp-client), which owns this UART.
+#
+# usb_type picks the driver, usb_vid/usb_pid pick the adapter plugged into the ESP (not the ESP itself):
+# set the three together, lsusb shows the VID:PID. Only the first port of multi-port chips (FT2232,
+# FT4232, CH342/CH344, CP2105) is bridged.
+
+substitutions:
+  usb_type: CH340  # CDC_ACM, CH340, CH34X, CP210X, FT232, FT2232, FT4232, PL2303...: see README.md
+  usb_vid: "0x1A86"
+  usb_pid: "0x7523"
+  usb_enable_hubs: "false"  # true to reach the adapter through a USB hub
+  uart_baud_rate: "9600"
+  uart_data_bits: "8"  # 5..8
+  uart_parity: NONE  # NONE, EVEN, ODD, MARK or SPACE
+  uart_stop_bits: "1"  # 1, 1.5 or 2
+  uart_dtr: "false"  # true raises DTR once the adapter is set up; false leaves it as the driver does
+  uart_rts: "false"  # same for RTS. See README.md: only FTDI and CP210x need it
+  uart_buffer_size: "256"  # bytes held in each direction, 64..8192
+  uart_debug: "false"  # true logs every byte in both directions
+
+usb_host:
+  enable_hubs: ${usb_enable_hubs}
+
+usb_uart:
+  - id: bridge_usb
+    type: ${usb_type}
+    vid: ${usb_vid}
+    pid: ${usb_pid}
+    channels:
+      - id: bridge_uart
+        baud_rate: ${uart_baud_rate}
+        data_bits: ${uart_data_bits}
+        parity: ${uart_parity}
+        stop_bits: ${uart_stop_bits}
+        buffer_size: ${uart_buffer_size}
+        debug: ${uart_debug}
+
+esphome:
+  on_boot:
+    # Raise DTR/RTS on request once the driver has set up the adapter. Only the FTDI and CP210x drivers
+    # leave them inactive; CDC ACM, CH34x and PL2303 raise both themselves. First port only.
+    - lambda: |-
+        const bool dtr = ${uart_dtr}, rts = ${uart_rts};
+        const char *type = "${usb_type}";
+        const bool ftdi = strncasecmp(type, "FT", 2) == 0, cp210x = strcasecmp(type, "CP210X") == 0;
+        if (!(dtr || rts) || !(ftdi || cp210x))
+          return;
+        // FTDI SET_MODEM_CTRL and CP210x SET_MHS: line state in the low byte, change mask in the high one
+        const uint16_t value = (dtr ? 0x0101 : 0) | (rts ? 0x0202 : 0);
+        id(bridge_usb)->add_on_connection_callback([=](bool connected) {
+          if (!connected)
+            return;
+          auto done = [](const usb_host::TransferStatus &st) {
+            if (!st.success)
+              ESP_LOGW("usb_bridge", "Setting DTR/RTS failed");
+          };
+          if (ftdi)
+            id(bridge_usb)->control_transfer(0x40, 0x01, value, 1, done);
+          else
+            id(bridge_usb)->control_transfer(0x41, 0x07, value, 0, done);
+          ESP_LOGD("usb_bridge", "Raised%s%s", dtr ? " DTR" : "", rts ? " RTS" : "");
+        });

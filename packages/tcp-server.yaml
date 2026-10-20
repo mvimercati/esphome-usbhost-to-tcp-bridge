@@ -1,0 +1,17 @@
+# Transport: the ESP listens on a TCP port and serves one client at a time with the raw UART stream.
+# Needs packages/usb-uart.yaml. A new client is refused while one is connected.
+
+substitutions:
+  tcp_port: "6638"
+  tcp_allowed_ips: 0.0.0.0/0  # an address, a CIDR network or a list of them; 0.0.0.0/0 allows everyone
+
+uart_tcp:
+  - id: bridge_tcp
+    uart_id: bridge_uart
+    role: server
+    port: ${tcp_port}
+    allowed_ips: ${tcp_allowed_ips}
+    connected:
+      name: Client connected
+    disconnects:
+      name: Client disconnects

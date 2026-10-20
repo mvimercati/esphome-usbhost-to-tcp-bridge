@@ -1,0 +1,17 @@
+# Platform: an ESP32 with a USB OTG controller: ESP32-S2, ESP32-S3 or ESP32-P4 (set board). ESPHome
+# refuses usb_host on any other variant. The native USB port is the host, so the logger can't use it:
+# it goes to a hardware UART (on most S3 devkits UART0 is the second, "UART"/"COM" USB port).
+
+substitutions:
+  board: esp32-s3-devkitc-1
+  flash_size: 4MB  # 2MB, 4MB, 8MB, 16MB or 32MB: what your module has
+  logger_uart: UART0  # UART0 or UART1
+
+esp32:
+  board: ${board}
+  flash_size: ${flash_size}
+  framework:
+    type: esp-idf  # usb_host needs ESP-IDF
+
+logger:
+  hardware_uart: ${logger_uart}

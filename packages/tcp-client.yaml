@@ -1,0 +1,18 @@
+# Transport: the ESP connects to a TCP server and keeps reconnecting when the link drops.
+# Needs packages/usb-uart.yaml. tcp_host has no default: set it in the device file.
+
+substitutions:
+  tcp_port: "6638"
+  tcp_reconnect_interval: 5s
+
+uart_tcp:
+  - id: bridge_tcp
+    uart_id: bridge_uart
+    role: client
+    host: ${tcp_host}  # IPv4 address or hostname
+    port: ${tcp_port}
+    reconnect_interval: ${tcp_reconnect_interval}
+    connected:
+      name: Server connected
+    disconnects:
+      name: Server disconnects

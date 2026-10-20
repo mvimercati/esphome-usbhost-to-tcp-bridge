@@ -1,0 +1,58 @@
+# ESPHome USB-serial <-> WiFi bridge: example device configuration.
+# The ESP (S2, S3 or P4) is the USB host of a USB-serial adapter and bridges its serial line to TCP.
+# Copy it, edit the substitutions, pick the transport package and build. See README.md.
+# Needs ESPHome >= 2026.10 (uart_tcp).
+
+substitutions:
+  name: usb-bridge
+  friendly_name: USB bridge
+  board: esp32-s3-devkitc-1  # e.g. esp32-s2-saola-1, esp32-p4-evboard
+  flash_size: 4MB
+
+  # The adapter plugged into the native USB port (not the ESP): driver and VID:PID, lsusb shows them
+  usb_type: CH340  # FTDI FT232R: FT232, "0x0403", "0x6001"; CP2102: CP210X, "0x10C4", "0xEA60"
+  usb_vid: "0x1A86"
+  usb_pid: "0x7523"
+  uart_baud_rate: "115200"
+  uart_data_bits: "8"
+  uart_parity: NONE
+  uart_stop_bits: "1"
+  uart_dtr: "false"  # true raises DTR/RTS: only FTDI and CP210x leave them inactive
+  uart_rts: "false"
+
+  tcp_port: "6638"
+  tcp_allowed_ips: 0.0.0.0/0  # tcp-server: e.g. 192.168.1.10 or [192.168.1.10, 10.0.0.0/24]
+  # tcp_host: 192.168.1.10   # tcp-client: the server to connect to
+
+packages:
+  platform: !include packages/esp32.yaml
+  usb: !include packages/usb-uart.yaml
+  transport: !include packages/tcp-server.yaml  # or packages/tcp-client.yaml
+  diagnostics: !include packages/diagnostics.yaml  # optional
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+
+# psram:  # if the module has it, e.g. N16R8 = 16 MB flash, 8 MB octal PSRAM
+#   mode: octal
+
+logger:  # on UART0 (the S3 devkit's second USB port) and over WiFi
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+    encryption: {}  # same key as the api
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  power_save_mode: none  # no modem sleep: lower latency, fewer lost packets
+  ap:  # fallback hotspot with captive portal if the WiFi is unreachable
+    ssid: ${name}
+    password: !secret fallback_ap_password
+
+captive_portal:

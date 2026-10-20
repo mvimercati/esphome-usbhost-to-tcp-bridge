@@ -1,0 +1,12 @@
+# Credentials (WiFi, API key, fallback AP password)
+secrets.yaml
+
+# ESPHome build output and caches
+.esphome/
+*.bin
+__pycache__/
+
+# Local notes: not published
+LOCAL.md
+PLAN.md
+CLAUDE.md
