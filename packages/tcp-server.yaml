@@ -11,7 +11,17 @@ uart_tcp:
     role: server
     port: ${tcp_port}
     allowed_ips: ${tcp_allowed_ips}
+
+# Report whether the TCP connection is established.
+binary_sensor:
+  - platform: uart_tcp
+    uart_tcp_id: bridge_tcp
     connected:
       name: Client connected
+
+# Count how many times an open connection has closed since boot.
+sensor:
+  - platform: uart_tcp
+    uart_tcp_id: bridge_tcp
     disconnects:
       name: Client disconnects
